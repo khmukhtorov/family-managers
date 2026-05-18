@@ -1,0 +1,1881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1a73e8">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Family Manager Pro</title>
+    <link rel="manifest" href="manifest.json">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <!-- SheetJS for XLSX export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- jsPDF for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #3730a3;
+            --primary-light: #eef2ff;
+            --success: #10b981;
+            --success-light: #d1fae5;
+            --warning: #f59e0b;
+            --warning-light: #fef3c7;
+            --danger: #ef4444;
+            --danger-light: #fee2e2;
+            --purple: #8b5cf6;
+            --pink: #ec4899;
+            --cyan: #06b6d4;
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --surface-hover: #f1f5f9;
+            --text: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --border: #e2e8f0;
+            --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+            --shadow-lg: 0 10px 25px rgba(0,0,0,0.1);
+            --shadow-xl: 0 20px 40px rgba(0,0,0,0.15);
+            --radius: 16px;
+            --radius-sm: 10px;
+            --radius-xs: 6px;
+            --gold: #fbbf24;
+            --silver: #9ca3af;
+            --bronze: #d97706;
+        }
+
+        [data-theme="dark"] {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --surface-hover: #334155;
+            --text: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border: #334155;
+            --primary-light: #312e81;
+            --success-light: #064e3b;
+            --warning-light: #78350f;
+            --danger-light: #7f1d1d;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        /* ===== ANIMATIONS ===== */
+        @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes confetti { 0% { transform: translateY(0) rotate(0); opacity:1; } 100% { transform: translateY(-200px) rotate(720deg); opacity:0; } }
+        @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        @keyframes bounceIn { 0% { transform: scale(0); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
+        @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        @keyframes glow { 0%,100% { box-shadow: 0 0 5px var(--gold); } 50% { box-shadow: 0 0 20px var(--gold), 0 0 40px var(--gold); } }
+
+        .animate-pop { animation: popIn 0.3s ease; }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+
+        /* ===== LOGIN SCREEN ===== */
+        .login-screen {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #ec4899 100%);
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-screen::before {
+            content: '';
+            position: absolute;
+            width: 400px; height: 400px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            top: -100px; right: -100px;
+        }
+        .login-screen::after {
+            content: '';
+            position: absolute;
+            width: 300px; height: 300px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 50%;
+            bottom: -50px; left: -50px;
+        }
+
+        .login-card {
+            background: var(--surface);
+            border-radius: 24px;
+            padding: 40px 28px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: var(--shadow-xl);
+            text-align: center;
+            position: relative;
+            z-index: 1;
+            animation: popIn 0.5s ease;
+        }
+
+        .login-card h1 { font-size: 26px; font-weight: 800; margin-bottom: 4px; }
+        .login-card .subtitle { color: var(--text-secondary); margin-bottom: 24px; font-size: 14px; }
+
+        .app-icon {
+            width: 80px; height: 80px;
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            border-radius: 22px;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 20px;
+            box-shadow: 0 8px 24px rgba(79,70,229,0.4);
+        }
+        .app-icon .material-icons-round { font-size: 40px; color: white; }
+
+        .member-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+
+        .member-btn {
+            display: flex; align-items: center; gap: 14px;
+            padding: 14px 16px;
+            border: 2px solid var(--border);
+            border-radius: 14px;
+            background: var(--surface);
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+        .member-btn:hover { border-color: var(--primary); background: var(--primary-light); transform: translateX(4px); }
+
+        .avatar {
+            width: 44px; height: 44px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 15px; color: white; flex-shrink: 0;
+        }
+        .member-btn .info { flex: 1; }
+        .member-btn .name { font-weight: 600; font-size: 15px; }
+        .member-btn .role { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; }
+        .member-btn .role .material-icons-round { font-size: 14px; }
+
+        .pin-screen { display: none; flex-direction: column; align-items: center; gap: 16px; }
+        .pin-input { display: flex; gap: 10px; }
+        .pin-input input {
+            width: 52px; height: 60px; text-align: center;
+            font-size: 26px; font-weight: 800;
+            border: 2.5px solid var(--border);
+            border-radius: 12px; outline: none;
+            background: var(--bg);
+            transition: all 0.2s;
+        }
+        .pin-input input:focus { border-color: var(--primary); background: var(--primary-light); }
+        .pin-error { color: var(--danger); font-size: 13px; display: none; }
+
+        .lang-selector { display: flex; gap: 6px; justify-content: center; margin-top: 16px; }
+        .lang-btn {
+            padding: 6px 14px; border-radius: 20px;
+            border: 1.5px solid var(--border);
+            background: transparent; font-size: 12px; font-weight: 600;
+            cursor: pointer; transition: all 0.2s; color: var(--text);
+        }
+        .lang-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        /* ===== MAIN APP ===== */
+        .app-container { display: none; flex-direction: column; min-height: 100vh; }
+
+        /* TOP BAR */
+        .top-bar {
+            background: var(--surface);
+            padding: 10px 16px;
+            display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+            position: sticky; top: 0; z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+        .top-bar .left { display: flex; align-items: center; gap: 10px; }
+        .top-bar .user-avatar { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: white; }
+        .top-bar .user-name { font-weight: 700; font-size: 14px; }
+        .top-bar .user-points { font-size: 12px; color: var(--warning); font-weight: 600; display: flex; align-items: center; gap: 2px; }
+        .top-bar .right { display: flex; align-items: center; gap: 4px; }
+
+        .icon-btn {
+            width: 36px; height: 36px; border-radius: 50%;
+            border: none; background: transparent; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-secondary); transition: all 0.2s;
+        }
+        .icon-btn:hover { background: var(--surface-hover); }
+
+        /* CONTENT */
+        .content { flex: 1; padding: 16px; padding-bottom: 90px; max-width: 900px; margin: 0 auto; width: 100%; }
+
+        /* DATE HEADER */
+        .date-header { padding: 12px 0 16px; }
+        .date-header h2 { font-size: 22px; font-weight: 800; }
+        .date-header p { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+
+        /* CARDS */
+        .card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 18px;
+            margin-bottom: 14px;
+            box-shadow: var(--shadow);
+            transition: all 0.2s;
+        }
+        .card:hover { box-shadow: var(--shadow-md); }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .card-title { font-size: 14px; font-weight: 700; }
+
+        /* PROGRESS */
+        .progress-ring { position: relative; display: inline-flex; align-items: center; justify-content: center; }
+        .progress-ring svg { transform: rotate(-90deg); }
+        .progress-ring .pct { position: absolute; font-size: 14px; font-weight: 800; }
+
+        .progress-bar-wrap { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+        .progress-bar-fill {
+            height: 100%; border-radius: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--purple));
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* LEADERBOARD */
+        .leaderboard { display: flex; flex-direction: column; gap: 8px; }
+        .leader-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 14px; border-radius: 12px;
+            background: var(--bg); transition: all 0.2s;
+        }
+        .leader-item.rank-1 { background: linear-gradient(135deg, #fef3c7, #fde68a); border: 2px solid var(--gold); }
+        .leader-item.rank-2 { background: linear-gradient(135deg, #f1f5f9, #e2e8f0); border: 2px solid var(--silver); }
+        .leader-item.rank-3 { background: linear-gradient(135deg, #fef3c7, #fed7aa); border: 2px solid var(--bronze); }
+
+        .leader-rank {
+            width: 28px; height: 28px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 13px; flex-shrink: 0;
+        }
+        .rank-1 .leader-rank { background: var(--gold); color: #78350f; }
+        .rank-2 .leader-rank { background: var(--silver); color: white; }
+        .rank-3 .leader-rank { background: var(--bronze); color: white; }
+
+        .leader-info { flex: 1; }
+        .leader-name { font-weight: 600; font-size: 14px; }
+        .leader-sub { font-size: 12px; color: var(--text-secondary); }
+        .leader-points { font-weight: 800; font-size: 16px; color: var(--primary); }
+
+        /* ACHIEVEMENTS */
+        .badges-grid { display: flex; gap: 10px; overflow-x: auto; padding: 4px 0; }
+        .badge {
+            min-width: 72px; text-align: center; padding: 10px 8px;
+            border-radius: 12px; background: var(--bg);
+            transition: all 0.2s;
+        }
+        .badge.earned { background: var(--warning-light); animation: bounceIn 0.5s ease; }
+        .badge.locked { opacity: 0.4; filter: grayscale(1); }
+        .badge-icon { font-size: 28px; margin-bottom: 4px; }
+        .badge-name { font-size: 10px; font-weight: 600; color: var(--text-secondary); }
+
+        /* CATEGORY TABS */
+        .category-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0 14px; -webkit-overflow-scrolling: touch; }
+        .category-tabs::-webkit-scrollbar { display: none; }
+        .cat-tab {
+            padding: 7px 14px; border-radius: 20px;
+            border: 1.5px solid var(--border); background: var(--surface);
+            font-size: 12px; font-weight: 600; white-space: nowrap;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .cat-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        /* TASK CARDS */
+        .task-list { display: flex; flex-direction: column; gap: 8px; }
+        .task-card {
+            background: var(--surface); border-radius: 14px;
+            padding: 14px 16px; display: flex; align-items: center; gap: 12px;
+            box-shadow: var(--shadow); transition: all 0.2s; cursor: pointer;
+            border: 1.5px solid transparent;
+        }
+        .task-card:active { transform: scale(0.98); }
+        .task-card.completed { border-color: var(--success); background: var(--success-light); }
+        .task-card.completed .task-title { text-decoration: line-through; color: var(--text-secondary); }
+
+        .task-check {
+            width: 28px; height: 28px; border-radius: 50%;
+            border: 2.5px solid var(--border); flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s;
+        }
+        .task-card.completed .task-check { background: var(--success); border-color: var(--success); }
+        .task-card.completed .task-check::after { content: '\2713'; color: white; font-size: 14px; font-weight: 800; }
+
+        .task-content { flex: 1; min-width: 0; }
+        .task-title { font-size: 14px; font-weight: 500; }
+        .task-meta { display: flex; align-items: center; gap: 8px; margin-top: 3px; flex-wrap: wrap; }
+        .task-time { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 3px; }
+        .task-time .material-icons-round { font-size: 13px; }
+
+        .task-points {
+            display: inline-flex; align-items: center; gap: 2px;
+            padding: 2px 8px; border-radius: 10px;
+            font-size: 11px; font-weight: 700;
+            background: var(--warning-light); color: var(--bronze);
+        }
+
+        .task-difficulty {
+            display: inline-flex; align-items: center; gap: 2px;
+            font-size: 10px; font-weight: 600; color: var(--text-muted);
+        }
+
+        /* BOTTOM NAV */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: var(--surface);
+            display: flex; justify-content: space-around;
+            padding: 6px 0 max(6px, env(safe-area-inset-bottom));
+            border-top: 1px solid var(--border);
+            z-index: 100;
+        }
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center; gap: 1px;
+            padding: 6px 8px; border-radius: 12px;
+            cursor: pointer; border: none; background: transparent;
+            color: var(--text-muted); font-size: 10px; font-weight: 500;
+            transition: all 0.2s;
+        }
+        .nav-item.active { color: var(--primary); }
+        .nav-item .material-icons-round { font-size: 22px; }
+
+        /* FAB */
+        .fab {
+            position: fixed; bottom: 76px; right: 16px;
+            width: 54px; height: 54px; border-radius: 16px;
+            background: linear-gradient(135deg, var(--primary), var(--purple));
+            color: white; border: none;
+            box-shadow: 0 6px 20px rgba(79,70,229,0.4);
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s; z-index: 50;
+        }
+        .fab:active { transform: scale(0.9); }
+        .fab .material-icons-round { font-size: 26px; }
+
+        /* MODAL */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+            z-index: 200; display: none; align-items: flex-end; justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: var(--surface); border-radius: 24px 24px 0 0;
+            width: 100%; max-width: 520px; max-height: 88vh;
+            overflow-y: auto; padding: 28px 24px;
+            animation: slideUp 0.3s ease;
+        }
+        .modal h3 { font-size: 18px; font-weight: 800; margin-bottom: 20px; text-align: center; }
+
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%; padding: 12px 14px;
+            border: 2px solid var(--border); border-radius: var(--radius-sm);
+            font-size: 15px; font-family: inherit; outline: none;
+            background: var(--bg); color: var(--text);
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--primary); }
+
+        .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+        .chip {
+            padding: 8px 14px; border-radius: 20px;
+            border: 2px solid var(--border); font-size: 13px; font-weight: 500;
+            cursor: pointer; transition: all 0.2s; background: var(--bg);
+        }
+        .chip.selected { background: var(--primary); color: white; border-color: var(--primary); }
+
+        .btn {
+            padding: 14px 24px; border-radius: var(--radius-sm);
+            border: none; font-size: 15px; font-weight: 700;
+            cursor: pointer; width: 100%; transition: all 0.2s;
+        }
+        .btn-primary { background: linear-gradient(135deg, var(--primary), var(--purple)); color: white; }
+        .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-secondary { background: var(--bg); color: var(--text); margin-top: 8px; }
+        .btn-danger { background: var(--danger); color: white; margin-top: 8px; }
+
+        /* STATS & REPORTS */
+        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+        .stat-card {
+            background: var(--surface); border-radius: var(--radius);
+            padding: 16px; box-shadow: var(--shadow); text-align: center;
+        }
+        .stat-card .stat-icon { font-size: 24px; margin-bottom: 6px; }
+        .stat-card .stat-value { font-size: 26px; font-weight: 800; }
+        .stat-card .stat-label { font-size: 11px; color: var(--text-secondary); margin-top: 2px; font-weight: 500; }
+
+        /* REPORT FILTERS */
+        .filters-bar {
+            display: flex; gap: 8px; flex-wrap: wrap;
+            padding: 12px; background: var(--surface);
+            border-radius: var(--radius); margin-bottom: 14px;
+            box-shadow: var(--shadow);
+        }
+        .filter-select {
+            padding: 8px 12px; border-radius: 8px;
+            border: 1.5px solid var(--border);
+            font-size: 13px; font-weight: 500;
+            background: var(--bg); color: var(--text);
+            cursor: pointer; outline: none;
+        }
+        .export-btn {
+            padding: 8px 16px; border-radius: 8px;
+            border: none; font-size: 13px; font-weight: 600;
+            cursor: pointer; display: flex; align-items: center; gap: 4px;
+            transition: all 0.2s;
+        }
+        .export-xlsx { background: #217346; color: white; }
+        .export-pdf { background: #dc2626; color: white; }
+        .export-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+
+        /* CHARTS */
+        .chart-container { padding: 16px; background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 14px; }
+        .bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 120px; padding-top: 10px; }
+        .bar-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .bar {
+            width: 100%; border-radius: 6px 6px 0 0;
+            background: linear-gradient(180deg, var(--primary), var(--purple));
+            transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            min-height: 4px;
+        }
+        .bar-label { font-size: 10px; font-weight: 600; color: var(--text-muted); }
+        .bar-value { font-size: 10px; font-weight: 700; color: var(--primary); }
+
+        /* MENU */
+        .menu-card { background: var(--surface); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow); }
+        .menu-card h4 { font-size: 14px; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+        .menu-item { padding: 7px 0; border-bottom: 1px solid var(--bg); font-size: 13px; display: flex; align-items: center; gap: 8px; }
+        .menu-item:last-child { border-bottom: none; }
+
+        /* FAMILY MEMBER CARDS */
+        .family-card {
+            background: var(--surface); border-radius: var(--radius);
+            padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow);
+            display: flex; align-items: center; gap: 14px;
+        }
+        .family-card .fm-progress { position: relative; }
+        .family-card .fm-info { flex: 1; }
+        .family-card .fm-name { font-weight: 700; font-size: 14px; }
+        .family-card .fm-stats { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+        /* REWARDS STORE */
+        .reward-card {
+            background: var(--surface); border-radius: var(--radius);
+            padding: 16px; margin-bottom: 10px; box-shadow: var(--shadow);
+            display: flex; align-items: center; gap: 14px;
+            border: 2px solid var(--border);
+        }
+        .reward-card .reward-icon { font-size: 36px; }
+        .reward-card .reward-info { flex: 1; }
+        .reward-card .reward-name { font-weight: 700; font-size: 14px; }
+        .reward-card .reward-cost { font-size: 13px; color: var(--warning); font-weight: 700; }
+        .reward-btn {
+            padding: 8px 16px; border-radius: 8px;
+            background: var(--primary); color: white;
+            border: none; font-weight: 700; font-size: 12px;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .reward-btn:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; }
+
+        /* CONFETTI */
+        .confetti-particle {
+            position: fixed; pointer-events: none; z-index: 9999;
+            animation: confetti 1.5s ease-out forwards;
+        }
+
+        /* TOAST */
+        .toast {
+            position: fixed; top: 70px; left: 50%; transform: translateX(-50%);
+            background: var(--text); color: white; padding: 12px 20px;
+            border-radius: 12px; font-size: 14px; font-weight: 600;
+            z-index: 9999; animation: popIn 0.3s ease;
+            display: flex; align-items: center; gap: 8px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* RESPONSIVE */
+        @media (min-width: 768px) {
+            .stats-grid { grid-template-columns: repeat(4, 1fr); }
+            .content { padding: 24px; }
+            .modal { border-radius: 24px; margin-bottom: 20px; }
+        }
+
+        .hidden { display: none !important; }
+        .empty-state { text-align: center; padding: 40px 20px; color: var(--text-secondary); }
+        .empty-state .material-icons-round { font-size: 48px; opacity: 0.4; margin-bottom: 10px; }
+
+        /* Point earned animation */
+        .points-popup {
+            position: fixed; pointer-events: none; z-index: 9999;
+            font-size: 24px; font-weight: 800; color: var(--gold);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            animation: confetti 1s ease-out forwards;
+        }
+
+        /* Weekly challenge banner */
+        .challenge-banner {
+            background: linear-gradient(135deg, #7c3aed, #ec4899);
+            border-radius: var(--radius); padding: 16px 18px;
+            color: white; margin-bottom: 14px;
+            display: flex; align-items: center; gap: 12px;
+        }
+        .challenge-banner .challenge-icon { font-size: 32px; }
+        .challenge-banner .challenge-info h4 { font-weight: 700; font-size: 14px; }
+        .challenge-banner .challenge-info p { font-size: 12px; opacity: 0.9; margin-top: 2px; }
+        .challenge-progress { margin-top: 8px; height: 6px; background: rgba(255,255,255,0.3); border-radius: 3px; overflow: hidden; }
+        .challenge-progress-fill { height: 100%; background: white; border-radius: 3px; transition: width 0.5s; }
+    </style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" class="login-screen">
+    <div class="login-card">
+        <div class="app-icon">
+            <span class="material-icons-round">family_restroom</span>
+        </div>
+        <h1 data-i18n="appTitle">Family Manager Pro</h1>
+        <p class="subtitle" data-i18n="selectMember">Select your profile to continue</p>
+
+        <div id="memberListView">
+            <div class="member-list" id="memberList"></div>
+        </div>
+
+        <div id="pinView" class="pin-screen">
+            <p id="pinPrompt" data-i18n="enterPin">Enter your PIN</p>
+            <div class="pin-input" id="pinInput">
+                <input type="password" maxlength="1" inputmode="numeric">
+                <input type="password" maxlength="1" inputmode="numeric">
+                <input type="password" maxlength="1" inputmode="numeric">
+                <input type="password" maxlength="1" inputmode="numeric">
+            </div>
+            <p class="pin-error" id="pinError" data-i18n="wrongPin">Wrong PIN. Try again.</p>
+            <button class="btn btn-secondary" onclick="showMemberList()" style="max-width:200px" data-i18n="back">Back</button>
+        </div>
+
+        <div class="lang-selector">
+            <button class="lang-btn active" onclick="setLang('en')">EN</button>
+            <button class="lang-btn" onclick="setLang('ru')">RU</button>
+            <button class="lang-btn" onclick="setLang('tj')">TJ</button>
+        </div>
+    </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="appContainer" class="app-container">
+    <div class="top-bar">
+        <div class="left">
+            <div class="user-avatar" id="topAvatar"></div>
+            <div>
+                <div class="user-name" id="topName"></div>
+                <div class="user-points" id="topPoints"></div>
+            </div>
+        </div>
+        <div class="right">
+            <button class="icon-btn" onclick="toggleTheme()" title="Toggle dark mode">
+                <span class="material-icons-round" id="themeIcon">dark_mode</span>
+            </button>
+            <button class="icon-btn" onclick="showLangMenu()">
+                <span class="material-icons-round">translate</span>
+            </button>
+            <button class="icon-btn" onclick="logout()">
+                <span class="material-icons-round">logout</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="content" id="mainContent"></div>
+
+    <button class="fab hidden" id="fabBtn" onclick="openAddModal()">
+        <span class="material-icons-round">add</span>
+    </button>
+
+    <div class="bottom-nav">
+        <button class="nav-item active" onclick="switchTab('today')" data-tab="today">
+            <span class="material-icons-round">today</span>
+            <span data-i18n="navToday">Today</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('leaderboard')" data-tab="leaderboard">
+            <span class="material-icons-round">emoji_events</span>
+            <span data-i18n="navBoard">Board</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('menu')" data-tab="menu">
+            <span class="material-icons-round">restaurant</span>
+            <span data-i18n="navMenu">Menu</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('reports')" data-tab="reports">
+            <span class="material-icons-round">assessment</span>
+            <span data-i18n="navReports">Reports</span>
+        </button>
+        <button class="nav-item hidden" id="navManage" onclick="switchTab('manage')" data-tab="manage">
+            <span class="material-icons-round">settings</span>
+            <span data-i18n="navManage">Manage</span>
+        </button>
+    </div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <h3 id="modalTitle" data-i18n="addTask">Add Task</h3>
+        <form id="taskForm" onsubmit="saveTask(event)">
+            <div class="form-group">
+                <label data-i18n="taskName">Task Name</label>
+                <input type="text" id="taskNameInput" required>
+            </div>
+            <div class="form-group">
+                <label>Name (RU)</label>
+                <input type="text" id="taskNameRu" placeholder="Russian name">
+            </div>
+            <div class="form-group">
+                <label>Name (TJ)</label>
+                <input type="text" id="taskNameTj" placeholder="Tajik name">
+            </div>
+            <div class="form-group">
+                <label data-i18n="category">Category</label>
+                <select id="taskCategory">
+                    <option value="routine">Morning/Evening Routine</option>
+                    <option value="chore">Household Chore</option>
+                    <option value="islamic">Islamic Duty</option>
+                    <option value="habit">Habit</option>
+                    <option value="duty">Duty/Responsibility</option>
+                    <option value="menu">Menu/Meal</option>
+                    <option value="program">Program/Activity</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label data-i18n="difficulty">Difficulty & Points</label>
+                <select id="taskDifficulty">
+                    <option value="easy">Easy (5 pts)</option>
+                    <option value="medium">Medium (10 pts)</option>
+                    <option value="hard">Hard (20 pts)</option>
+                    <option value="epic">Epic (50 pts)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label data-i18n="time">Time (optional)</label>
+                <input type="time" id="taskTime">
+            </div>
+            <div class="form-group">
+                <label data-i18n="assignTo">Assign To</label>
+                <div class="chips" id="assignChips"></div>
+            </div>
+            <div class="form-group">
+                <label data-i18n="repeat">Repeat</label>
+                <select id="taskRepeat">
+                    <option value="daily">Daily</option>
+                    <option value="weekdays">Weekdays</option>
+                    <option value="weekends">Weekends</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="once">Once</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label data-i18n="notes">Notes</label>
+                <textarea id="taskNotes" rows="2"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" data-i18n="save">Save</button>
+            <button type="button" class="btn btn-secondary" onclick="closeModal()" data-i18n="cancel">Cancel</button>
+            <button type="button" class="btn btn-danger hidden" id="deleteTaskBtn" onclick="deleteCurrentTask()" data-i18n="deleteTask">Delete Task</button>
+        </form>
+    </div>
+</div>
+
+<!-- MENU MODAL -->
+<div class="modal-overlay" id="menuModalOverlay" onclick="closeMenuModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <h3 data-i18n="addMenu">Add Menu Item</h3>
+        <form id="menuForm" onsubmit="saveMenu(event)">
+            <div class="form-group">
+                <label data-i18n="mealType">Meal Type</label>
+                <select id="mealType">
+                    <option value="breakfast">Breakfast</option>
+                    <option value="lunch">Lunch</option>
+                    <option value="dinner">Dinner</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label data-i18n="dishName">Dish Name</label>
+                <input type="text" id="menuDishInput" required>
+            </div>
+            <div class="form-group">
+                <label data-i18n="dayOfWeek">Day</label>
+                <select id="menuDay">
+                    <option value="monday">Monday</option>
+                    <option value="tuesday">Tuesday</option>
+                    <option value="wednesday">Wednesday</option>
+                    <option value="thursday">Thursday</option>
+                    <option value="friday">Friday</option>
+                    <option value="saturday">Saturday</option>
+                    <option value="sunday">Sunday</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary" data-i18n="save">Save</button>
+            <button type="button" class="btn btn-secondary" onclick="closeMenuModal()" data-i18n="cancel">Cancel</button>
+        </form>
+    </div>
+</div>
+
+<!-- REWARD MODAL -->
+<div class="modal-overlay" id="rewardModalOverlay" onclick="closeRewardModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <h3 data-i18n="rewardStore">Reward Store</h3>
+        <div id="rewardList"></div>
+        <button type="button" class="btn btn-secondary" onclick="closeRewardModal()" data-i18n="close">Close</button>
+    </div>
+</div>
+
+<!-- LANGUAGE MODAL -->
+<div class="modal-overlay" id="langModalOverlay" onclick="closeLangModal(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="text-align:center">
+        <h3 data-i18n="selectLang">Select Language</h3>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+            <button class="btn btn-secondary" onclick="setLang('en');closeLangModal()">English</button>
+            <button class="btn btn-secondary" onclick="setLang('ru');closeLangModal()">Русский</button>
+            <button class="btn btn-secondary" onclick="setLang('tj');closeLangModal()">Тоҷикӣ</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ==================== TRANSLATIONS ====================
+const translations = {
+    en: {
+        appTitle: "Family Manager Pro", selectMember: "Select your profile to continue",
+        enterPin: "Enter your PIN", wrongPin: "Wrong PIN. Try again.", back: "Back",
+        navToday: "Today", navBoard: "Board", navMenu: "Menu", navReports: "Reports", navManage: "Manage",
+        addTask: "Add Task", editTask: "Edit Task", taskName: "Task Name",
+        category: "Category", difficulty: "Difficulty & Points", time: "Time (optional)",
+        assignTo: "Assign To", repeat: "Repeat", notes: "Notes", save: "Save", cancel: "Cancel",
+        deleteTask: "Delete Task", addMenu: "Add Menu Item", mealType: "Meal Type",
+        breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner", dishName: "Dish Name", dayOfWeek: "Day",
+        monday: "Mon", tuesday: "Tue", wednesday: "Wed", thursday: "Thu",
+        friday: "Fri", saturday: "Sat", sunday: "Sun",
+        todayProgress: "Today's Progress", allCategories: "All",
+        catRoutine: "Routine", catChore: "Chores", catIslamic: "Islamic", catHabit: "Habits",
+        catDuty: "Duties", catMenu: "Menu", catProgram: "Programs",
+        parent: "Parent", child: "Child",
+        weeklyMenu: "Weekly Menu", totalPoints: "Total Points", todayPts: "Today",
+        weeklyPts: "This Week", monthlyPts: "This Month", streak: "Streak",
+        leaderboard: "Leaderboard", dailyBoard: "Daily", weeklyBoard: "Weekly", monthlyBoard: "Monthly",
+        reports: "Reports", filterPeriod: "Period", filterMember: "Member", filterCategory: "Category",
+        exportXlsx: "Excel", exportPdf: "PDF", allMembers: "All Members",
+        thisWeek: "This Week", thisMonth: "This Month", last7: "Last 7 Days", last30: "Last 30 Days",
+        manage: "Manage Tasks", rewards: "Rewards", rewardStore: "Reward Store",
+        achievements: "Achievements", weeklyChallenge: "Weekly Challenge",
+        close: "Close", selectLang: "Select Language",
+        pointsEarned: "points earned!", greatJob: "Great job!",
+        easy: "Easy", medium: "Medium", hard: "Hard", epic: "Epic",
+        daily: "Daily", weekdays: "Weekdays", weekends: "Weekends", weekly: "Weekly", once: "Once",
+        completionRate: "Completion Rate", topPerformer: "Top Performer",
+        familyReport: "Family Performance Report", generatedOn: "Generated on",
+        noData: "No data for selected filters"
+    },
+    ru: {
+        appTitle: "Семейный Менеджер Про", selectMember: "Выберите свой профиль",
+        enterPin: "Введите PIN", wrongPin: "Неверный PIN.", back: "Назад",
+        navToday: "Сегодня", navBoard: "Рейтинг", navMenu: "Меню", navReports: "Отчёты", navManage: "Управл.",
+        addTask: "Добавить задачу", editTask: "Редактировать", taskName: "Название",
+        category: "Категория", difficulty: "Сложность и баллы", time: "Время",
+        assignTo: "Назначить", repeat: "Повтор", notes: "Заметки", save: "Сохранить", cancel: "Отмена",
+        deleteTask: "Удалить", addMenu: "Добавить блюдо", mealType: "Приём пищи",
+        breakfast: "Завтрак", lunch: "Обед", dinner: "Ужин", dishName: "Блюдо", dayOfWeek: "День",
+        monday: "Пн", tuesday: "Вт", wednesday: "Ср", thursday: "Чт",
+        friday: "Пт", saturday: "Сб", sunday: "Вс",
+        todayProgress: "Прогресс сегодня", allCategories: "Все",
+        catRoutine: "Режим", catChore: "Дом. дела", catIslamic: "Ислам", catHabit: "Привычки",
+        catDuty: "Обязанности", catMenu: "Меню", catProgram: "Программы",
+        parent: "Родитель", child: "Ребёнок",
+        weeklyMenu: "Меню на неделю", totalPoints: "Всего баллов", todayPts: "Сегодня",
+        weeklyPts: "Неделя", monthlyPts: "Месяц", streak: "Серия",
+        leaderboard: "Рейтинг", dailyBoard: "День", weeklyBoard: "Неделя", monthlyBoard: "Месяц",
+        reports: "Отчёты", filterPeriod: "Период", filterMember: "Участник", filterCategory: "Категория",
+        exportXlsx: "Excel", exportPdf: "PDF", allMembers: "Все",
+        thisWeek: "Эта неделя", thisMonth: "Этот месяц", last7: "7 дней", last30: "30 дней",
+        manage: "Управление", rewards: "Награды", rewardStore: "Магазин наград",
+        achievements: "Достижения", weeklyChallenge: "Вызов недели",
+        close: "Закрыть", selectLang: "Выберите язык",
+        pointsEarned: "баллов!", greatJob: "Молодец!",
+        easy: "Легко", medium: "Средне", hard: "Сложно", epic: "Эпик",
+        daily: "Ежедневно", weekdays: "Будни", weekends: "Выходные", weekly: "Еженедельно", once: "Один раз",
+        completionRate: "Выполнение", topPerformer: "Лучший",
+        familyReport: "Отчёт семьи", generatedOn: "Создан",
+        noData: "Нет данных для выбранных фильтров"
+    },
+    tj: {
+        appTitle: "Мудири Оилаи Про", selectMember: "Профили худро интихоб кунед",
+        enterPin: "PIN ворид кунед", wrongPin: "PIN нодуруст.", back: "Бозгашт",
+        navToday: "Имрӯз", navBoard: "Рейтинг", navMenu: "Меню", navReports: "Ҳисобот", navManage: "Идора",
+        addTask: "Вазифа илова", editTask: "Таҳрир", taskName: "Ном",
+        category: "Категория", difficulty: "Мушкилӣ ва холҳо", time: "Вақт",
+        assignTo: "Таъин кардан", repeat: "Такрор", notes: "Қайдҳо", save: "Нигоҳ доштан", cancel: "Бекор",
+        deleteTask: "Нест кардан", addMenu: "Хӯрок илова", mealType: "Навъи хӯрок",
+        breakfast: "Наҳорӣ", lunch: "Нисфирӯзӣ", dinner: "Бегоҳӣ", dishName: "Номи хӯрок", dayOfWeek: "Рӯз",
+        monday: "Дш", tuesday: "Сш", wednesday: "Чш", thursday: "Пш",
+        friday: "Ҷм", saturday: "Шб", sunday: "Яш",
+        todayProgress: "Пешрафти имрӯз", allCategories: "Ҳама",
+        catRoutine: "Тартиб", catChore: "Хонагӣ", catIslamic: "Исломӣ", catHabit: "Одатҳо",
+        catDuty: "Ӯҳдадорӣ", catMenu: "Меню", catProgram: "Барнома",
+        parent: "Волидайн", child: "Фарзанд",
+        weeklyMenu: "Менюи ҳафтаина", totalPoints: "Ҳамаи холҳо", todayPts: "Имрӯз",
+        weeklyPts: "Ҳафта", monthlyPts: "Моҳ", streak: "Силсила",
+        leaderboard: "Рейтинг", dailyBoard: "Рӯз", weeklyBoard: "Ҳафта", monthlyBoard: "Моҳ",
+        reports: "Ҳисоботҳо", filterPeriod: "Давра", filterMember: "Аъзо", filterCategory: "Категория",
+        exportXlsx: "Excel", exportPdf: "PDF", allMembers: "Ҳама",
+        thisWeek: "Ин ҳафта", thisMonth: "Ин моҳ", last7: "7 рӯз", last30: "30 рӯз",
+        manage: "Идоракунӣ", rewards: "Мукофотҳо", rewardStore: "Мағозаи мукофот",
+        achievements: "Дастовардҳо", weeklyChallenge: "Мусобиқаи ҳафта",
+        close: "Пӯшидан", selectLang: "Забон интихоб кунед",
+        pointsEarned: "хол!", greatJob: "Офарин!",
+        easy: "Осон", medium: "Миёна", hard: "Мушкил", epic: "Олӣ",
+        daily: "Ҳаррӯза", weekdays: "Рӯзҳои корӣ", weekends: "Истироҳат", weekly: "Ҳафтаина", once: "Як бор",
+        completionRate: "Иҷро", topPerformer: "Беҳтарин",
+        familyReport: "Ҳисоботи оила", generatedOn: "Сохта шуд",
+        noData: "Маълумот нест"
+    }
+};
+
+let currentLang = localStorage.getItem('fm_lang') || 'en';
+function t(key) { return (translations[currentLang] && translations[currentLang][key]) || translations['en'][key] || key; }
+
+function setLang(lang) {
+    currentLang = lang;
+    localStorage.setItem('fm_lang', lang);
+    document.querySelectorAll('.lang-btn').forEach(b => {
+        b.classList.toggle('active', b.textContent.trim() === lang.toUpperCase());
+    });
+    if (currentUser) renderCurrentTab();
+}
+
+// ==================== FAMILY DATA ====================
+const familyMembers = [
+    { id: 'khushbakht', name: 'Khushbakht', nameFull: 'Khushbakht Mukhtorov', nameRu: 'Хушбахт', nameTj: 'Хушбахт', role: 'parent', pin: '1234', color: '#4f46e5', initials: 'KM' },
+    { id: 'nargis', name: 'Nargis', nameFull: 'Nargis Mukhtorova', nameRu: 'Наргис', nameTj: 'Наргис', role: 'parent', pin: '5678', color: '#ec4899', initials: 'NM' },
+    { id: 'aziza', name: 'Aziza', nameFull: 'Aziza Mukhtorova', nameRu: 'Азиза', nameTj: 'Азиза', role: 'child', pin: '1111', color: '#8b5cf6', initials: 'AZ' },
+    { id: 'muhammadaziz', name: 'Muhammadaziz', nameFull: 'Muhammadaziz Mukhtorov', nameRu: 'Мухаммадазиз', nameTj: 'Муҳаммадазиз', role: 'child', pin: '2222', color: '#f59e0b', initials: 'MA' },
+    { id: 'ahmadjon', name: 'Ahmadjon', nameFull: 'Ahmadjon Mukhtorov', nameRu: 'Ахмаджон', nameTj: 'Аҳмадҷон', role: 'child', pin: '3333', color: '#10b981', initials: 'AJ' }
+];
+
+const POINTS = { easy: 5, medium: 10, hard: 20, epic: 50 };
+const STREAK_MULTIPLIER = 0.1; // +10% per streak day, max 2x
+
+const rewards = [
+    { id: 'r1', name: '30 min extra screen time', nameRu: '30 мин экранного времени', nameTj: '30 дақ вақти экран', cost: 50, icon: '📱' },
+    { id: 'r2', name: 'Choose dinner meal', nameRu: 'Выбрать ужин', nameTj: 'Хӯроки бегоҳро интихоб', cost: 80, icon: '🍕' },
+    { id: 'r3', name: 'Stay up 30 min late', nameRu: 'Лечь на 30 мин позже', nameTj: '30 дақ дертар хобидан', cost: 100, icon: '🌙' },
+    { id: 'r4', name: 'Pick a family activity', nameRu: 'Выбрать семейное занятие', nameTj: 'Фаъолияти оилавӣ интихоб', cost: 150, icon: '🎮' },
+    { id: 'r5', name: 'Special outing/trip', nameRu: 'Особая прогулка', nameTj: 'Сайри махсус', cost: 300, icon: '🎢' },
+    { id: 'r6', name: 'Small gift (parent choice)', nameRu: 'Маленький подарок', nameTj: 'Тӯҳфаи хурд', cost: 500, icon: '🎁' }
+];
+
+const achievements = [
+    { id: 'a1', name: 'First Step', nameRu: 'Первый шаг', nameTj: 'Қадами аввал', icon: '🌱', condition: (pts) => pts >= 10 },
+    { id: 'a2', name: '100 Club', nameRu: 'Клуб 100', nameTj: 'Клуби 100', icon: '💯', condition: (pts) => pts >= 100 },
+    { id: 'a3', name: 'Star Player', nameRu: 'Звезда', nameTj: 'Ситора', icon: '⭐', condition: (pts) => pts >= 500 },
+    { id: 'a4', name: 'Champion', nameRu: 'Чемпион', nameTj: 'Чемпион', icon: '🏆', condition: (pts) => pts >= 1000 },
+    { id: 'a5', name: 'Legend', nameRu: 'Легенда', nameTj: 'Афсона', icon: '👑', condition: (pts) => pts >= 5000 },
+    { id: 'a6', name: '7-Day Streak', nameRu: '7 дней подряд', nameTj: '7 рӯз пайдарпай', icon: '🔥', condition: (pts, data, uid) => (data.streaks[uid] || 0) >= 7 },
+    { id: 'a7', name: '30-Day Streak', nameRu: '30 дней подряд', nameTj: '30 рӯз пайдарпай', icon: '🌋', condition: (pts, data, uid) => (data.streaks[uid] || 0) >= 30 },
+];
+
+let currentUser = null;
+let selectedMember = null;
+let currentTab = 'today';
+let editingTaskId = null;
+
+// ==================== DATA ====================
+function getData() {
+    const d = localStorage.getItem('fm_data_v2');
+    if (d) return JSON.parse(d);
+    return { tasks: getDefaultTasks(), completions: {}, menus: getDefaultMenus(), streaks: {}, points: {}, redeemed: {} };
+}
+function saveData(data) { localStorage.setItem('fm_data_v2', JSON.stringify(data)); }
+
+function getDefaultTasks() {
+    return [
+        // Routines
+        { id: 'r1', name: 'Wake up & make bed', nameRu: 'Проснуться и заправить кровать', nameTj: 'Бедор шудан ва ҷой ҷамъ кардан', category: 'routine', difficulty: 'easy', time: '06:00', assignedTo: ['khushbakht','nargis','aziza','muhammadaziz','ahmadjon'], repeat: 'daily' },
+        { id: 'r2', name: 'Brush teeth & wash face', nameRu: 'Чистить зубы и умыться', nameTj: 'Дандон тоза кардан', category: 'routine', difficulty: 'easy', time: '06:10', assignedTo: ['khushbakht','nargis','aziza','muhammadaziz','ahmadjon'], repeat: 'daily' },
+        { id: 'r3', name: 'Exercise / Morning walk', nameRu: 'Зарядка / Утренняя прогулка', nameTj: 'Машқи субҳ', category: 'routine', difficulty: 'medium', time: '06:30', assignedTo: ['khushbakht','nargis'], repeat: 'daily' },
+        { id: 'r4', name: 'Get dressed for school', nameRu: 'Одеться в школу', nameTj: 'Либос пӯшидан', category: 'routine', difficulty: 'easy', time: '07:00', assignedTo: ['aziza','muhammadaziz','ahmadjon'], repeat: 'weekdays' },
+        { id: 'r5', name: 'Homework (1 hour)', nameRu: 'Домашнее задание (1 час)', nameTj: 'Вазифаи хонагӣ (1 соат)', category: 'routine', difficulty: 'hard', time: '16:00', assignedTo: ['aziza','muhammadaziz','ahmadjon'], repeat: 'weekdays' },
+        { id: 'r6', name: 'Bedtime routine', nameRu: 'Вечерний ритуал', nameTj: 'Тартиби хоб', category: 'routine', difficulty: 'easy', time: '21:00', assignedTo: ['aziza','muhammadaziz','ahmadjon'], repeat: 'daily' },
+        // Islamic
+        { id: 'i1', name: 'Fajr Prayer', nameRu: 'Намаз Фаджр', nameTj: 'Намози Бомдод', category: 'islamic', difficulty: 'medium', time: '05:00', assignedTo: ['khushbakht','nargis','aziza','muhammadaziz','ahmadjon'], repeat: 'daily' },
+        { id: 'i2', name: 'Dhuhr Prayer', nameRu: 'Намаз Зухр', nameTj: 'Намози Пешин', category: 'islamic', difficulty: 'medium', time: '12:30', assignedTo: ['khushbakht','nargis','aziza','muhammadaziz','ahmadjon'], repeat: 'daily' },
+        { id: 'i3', name: 'Asr Prayer', nameRu: 'Намаз Аср', nameTj: 'Намози Аср', category: 'islamic', difficulty: 'medium', time: '15:30', assignedTo: ['khushbakht','nargis','aziza','muhammadaziz','ahmadjon'], repeat: 'daily' },
+        { id: 'i4', name: 'Maghrib Prayer', nameRu: 'Намаз Магриб', nameTj: 'Намози Шом', category: 'islamic', difficulty: 'medium', time: '18:30', assignedTo: ['khushbakht','nargis','aziza','muhammadaziz','ahmadjon'], repeat: 'daily' },
+        { id: 'i5', name: 'Isha Prayer', nameRu: 'Намаз Иша', nameTj: 'Намози Хуфтан', category: 'islamic', difficulty: 'medium', time: '20:00', assignedTo: ['khushbakht','nargis','aziza','muhammadaziz','ahmadjon'], repeat: 'daily' },
+        { id: 'i6', name: 'Quran Reading (15 min)', nameRu: 'Чтение Корана (15 мин)', nameTj: 'Хондани Қуръон (15 дақ)', category: 'islamic', difficulty: 'hard', time: '06:15', assignedTo: ['khushbakht','nargis','aziza','muhammadaziz','ahmadjon'], repeat: 'daily' },
+        { id: 'i7', name: 'Morning Adhkar', nameRu: 'Утренние Азкары', nameTj: 'Азкори субҳ', category: 'islamic', difficulty: 'easy', time: '05:30', assignedTo: ['khushbakht','nargis','aziza','muhammadaziz','ahmadjon'], repeat: 'daily' },
+        { id: 'i8', name: 'Evening Adhkar', nameRu: 'Вечерние Азкары', nameTj: 'Азкори бегоҳ', category: 'islamic', difficulty: 'easy', time: '18:00', assignedTo: ['khushbakht','nargis','aziza','muhammadaziz','ahmadjon'], repeat: 'daily' },
+        // Chores
+        { id: 'c1', name: 'Cook breakfast', nameRu: 'Приготовить завтрак', nameTj: 'Наҳорӣ пухтан', category: 'chore', difficulty: 'medium', time: '06:45', assignedTo: ['nargis','khushbakht'], repeat: 'daily' },
+        { id: 'c2', name: 'Wash dishes', nameRu: 'Помыть посуду', nameTj: 'Зарфшӯӣ', category: 'chore', difficulty: 'medium', time: '19:30', assignedTo: ['aziza','muhammadaziz'], repeat: 'daily' },
+        { id: 'c3', name: 'Clean your room', nameRu: 'Убрать комнату', nameTj: 'Ҳуҷра тоза кардан', category: 'chore', difficulty: 'medium', time: '08:00', assignedTo: ['aziza','muhammadaziz','ahmadjon'], repeat: 'daily' },
+        { id: 'c4', name: 'Take out trash', nameRu: 'Вынести мусор', nameTj: 'Партов баровардан', category: 'chore', difficulty: 'easy', time: '19:00', assignedTo: ['muhammadaziz','ahmadjon'], repeat: 'daily' },
+        { id: 'c5', name: 'Laundry', nameRu: 'Стирка', nameTj: 'Ҷомашӯӣ', category: 'chore', difficulty: 'hard', time: '10:00', assignedTo: ['nargis','khushbakht'], repeat: 'weekends' },
+        { id: 'c6', name: 'Sweep/mop floors', nameRu: 'Подмести/помыть полы', nameTj: 'Ҷорӯб задан', category: 'chore', difficulty: 'medium', time: '09:00', assignedTo: ['aziza','nargis'], repeat: 'daily' },
+        { id: 'c7', name: 'Grocery shopping', nameRu: 'Купить продукты', nameTj: 'Хариди маҳсулот', category: 'chore', difficulty: 'hard', time: '11:00', assignedTo: ['khushbakht','nargis'], repeat: 'weekends' },
+        // Habits
+        { id: 'h1', name: 'Read a book (30 min)', nameRu: 'Читать книгу (30 мин)', nameTj: 'Китоб хондан (30 дақ)', category: 'habit', difficulty: 'medium', time: '20:00', assignedTo: ['aziza','muhammadaziz','ahmadjon'], repeat: 'daily' },
+        { id: 'h2', name: 'Drink 8 glasses of water', nameRu: '8 стаканов воды', nameTj: '8 стакон об нӯшидан', category: 'habit', difficulty: 'easy', time: '', assignedTo: ['khushbakht','nargis','aziza','muhammadaziz','ahmadjon'], repeat: 'daily' },
+        { id: 'h3', name: 'No screen after 9 PM', nameRu: 'Без экранов после 21:00', nameTj: 'Баъди 21:00 экран не', category: 'habit', difficulty: 'hard', time: '21:00', assignedTo: ['aziza','muhammadaziz','ahmadjon'], repeat: 'daily' },
+        { id: 'h4', name: 'Practice gratitude', nameRu: 'Благодарность', nameTj: 'Шукргузорӣ', category: 'habit', difficulty: 'easy', time: '21:30', assignedTo: ['khushbakht','nargis','aziza','muhammadaziz','ahmadjon'], repeat: 'daily' },
+        { id: 'h5', name: 'Help a sibling/parent', nameRu: 'Помочь брату/родителю', nameTj: 'Ёрӣ ба бародар/волидайн', category: 'habit', difficulty: 'medium', time: '', assignedTo: ['aziza','muhammadaziz','ahmadjon'], repeat: 'daily' },
+    ];
+}
+
+function getDefaultMenus() {
+    return [
+        { day: 'monday', breakfast: 'Oatmeal & fruits', lunch: 'Plov (pilaf)', dinner: 'Soup & fresh bread' },
+        { day: 'tuesday', breakfast: 'Eggs & toast', lunch: 'Lagman', dinner: 'Grilled chicken & salad' },
+        { day: 'wednesday', breakfast: 'Pancakes & honey', lunch: 'Mantu', dinner: 'Fish & rice' },
+        { day: 'thursday', breakfast: 'Yogurt & granola', lunch: 'Shurbo', dinner: 'Pasta & vegetables' },
+        { day: 'friday', breakfast: 'Fresh bread & cheese', lunch: 'Qurutob', dinner: 'Kebab & salad' },
+        { day: 'saturday', breakfast: 'Shirchoy & bread', lunch: 'Sambusa & salad', dinner: 'Pizza (homemade)' },
+        { day: 'sunday', breakfast: 'Halvaitar & tea', lunch: 'Osh (special plov)', dinner: 'Light salad & soup' }
+    ];
+}
+
+// ==================== POINTS SYSTEM ====================
+function getTaskPoints(task) { return POINTS[task.difficulty] || 5; }
+
+function getStreakMultiplier(userId) {
+    const data = getData();
+    const streak = data.streaks[userId] || 0;
+    return Math.min(1 + (streak * STREAK_MULTIPLIER), 2.0);
+}
+
+function calculatePoints(userId, period) {
+    const data = getData();
+    const now = new Date();
+    let startDate;
+
+    if (period === 'today') { startDate = new Date(now.toISOString().split('T')[0]); }
+    else if (period === 'week') { startDate = new Date(now); startDate.setDate(now.getDate() - 7); }
+    else if (period === 'month') { startDate = new Date(now); startDate.setMonth(now.getMonth() - 1); }
+    else { startDate = new Date(0); }
+
+    let total = 0;
+    Object.keys(data.completions).forEach(dateKey => {
+        const d = new Date(dateKey);
+        if (d >= startDate && d <= now) {
+            const dayComp = data.completions[dateKey];
+            Object.keys(dayComp).forEach(key => {
+                if (key.startsWith(userId + '_') && dayComp[key]) {
+                    const taskId = key.split('_').slice(1).join('_');
+                    const task = data.tasks.find(t => t.id === taskId);
+                    if (task) total += getTaskPoints(task);
+                }
+            });
+        }
+    });
+    return total;
+}
+
+function getTotalPoints(userId) { return calculatePoints(userId, 'all'); }
+
+// ==================== LOGIN ====================
+function renderMemberList() {
+    document.getElementById('memberList').innerHTML = familyMembers.map(m => {
+        const pts = getTotalPoints(m.id);
+        const memberName = currentLang === 'ru' ? m.nameRu : currentLang === 'tj' ? m.nameTj : m.name;
+        return `
+            <button class="member-btn" onclick="selectMember('${m.id}')">
+                <div class="avatar" style="background:${m.color}">${m.initials}</div>
+                <div class="info">
+                    <div class="name">${memberName}</div>
+                    <div class="role"><span class="material-icons-round">${m.role === 'parent' ? 'shield' : 'star'}</span>${t(m.role)}${m.role === 'child' ? ' · ' + pts + ' pts' : ''}</div>
+                </div>
+                <span class="material-icons-round" style="color:var(--text-muted)">chevron_right</span>
+            </button>`;
+    }).join('');
+}
+
+function getMemberName(m) { return currentLang === 'ru' ? m.nameRu : currentLang === 'tj' ? m.nameTj : m.name; }
+
+function selectMember(id) {
+    selectedMember = familyMembers.find(m => m.id === id);
+    document.getElementById('memberListView').style.display = 'none';
+    document.getElementById('pinView').style.display = 'flex';
+    document.getElementById('pinError').style.display = 'none';
+    const inputs = document.querySelectorAll('#pinInput input');
+    inputs.forEach(i => i.value = '');
+    inputs[0].focus();
+}
+
+function showMemberList() {
+    document.getElementById('memberListView').style.display = 'block';
+    document.getElementById('pinView').style.display = 'none';
+}
+
+document.querySelectorAll('#pinInput input').forEach((input, idx, inputs) => {
+    input.addEventListener('input', (e) => {
+        if (e.target.value && idx < inputs.length - 1) inputs[idx + 1].focus();
+        if (idx === inputs.length - 1 && e.target.value) {
+            verifyPin(Array.from(inputs).map(i => i.value).join(''));
+        }
+    });
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !e.target.value && idx > 0) inputs[idx - 1].focus();
+    });
+});
+
+function verifyPin(pin) {
+    if (selectedMember && pin === selectedMember.pin) {
+        currentUser = selectedMember;
+        localStorage.setItem('fm_currentUser', currentUser.id);
+        enterApp();
+    } else {
+        document.getElementById('pinError').style.display = 'block';
+        const inputs = document.querySelectorAll('#pinInput input');
+        inputs.forEach(i => i.value = '');
+        inputs[0].focus();
+    }
+}
+
+function enterApp() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appContainer').style.display = 'flex';
+    document.getElementById('topAvatar').style.background = currentUser.color;
+    document.getElementById('topAvatar').textContent = currentUser.initials;
+    document.getElementById('topName').textContent = getMemberName(currentUser);
+    updateTopPoints();
+
+    if (currentUser.role === 'parent') {
+        document.getElementById('fabBtn').classList.remove('hidden');
+        document.getElementById('navManage').classList.remove('hidden');
+    } else {
+        document.getElementById('fabBtn').classList.add('hidden');
+        document.getElementById('navManage').classList.add('hidden');
+    }
+    renderCurrentTab();
+}
+
+function updateTopPoints() {
+    const pts = getTotalPoints(currentUser.id);
+    const streak = getData().streaks[currentUser.id] || 0;
+    document.getElementById('topPoints').innerHTML = `⭐ ${pts} pts ${streak > 0 ? '· 🔥' + streak : ''}`;
+}
+
+function logout() {
+    currentUser = null;
+    localStorage.removeItem('fm_currentUser');
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('appContainer').style.display = 'none';
+    showMemberList();
+    renderMemberList();
+}
+
+// ==================== TABS ====================
+function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+    const fab = document.getElementById('fabBtn');
+    if (currentUser.role === 'parent') {
+        fab.classList.toggle('hidden', tab === 'reports' || tab === 'leaderboard');
+    }
+    renderCurrentTab();
+}
+
+function renderCurrentTab() {
+    const c = document.getElementById('mainContent');
+    switch(currentTab) {
+        case 'today': renderToday(c); break;
+        case 'leaderboard': renderLeaderboard(c); break;
+        case 'menu': renderMenu(c); break;
+        case 'reports': renderReports(c); break;
+        case 'manage': renderManage(c); break;
+    }
+}
+
+// ==================== TODAY VIEW ====================
+function renderToday(container) {
+    const data = getData();
+    const today = getTodayKey();
+    const myTasks = data.tasks.filter(t => t.assignedTo.includes(currentUser.id) && isTaskForToday(t));
+    const completions = data.completions[today] || {};
+    const done = myTasks.filter(t => completions[`${currentUser.id}_${t.id}`]).length;
+    const pct = myTasks.length ? Math.round((done / myTasks.length) * 100) : 0;
+    const todayPts = calculatePoints(currentUser.id, 'today');
+    const streak = data.streaks[currentUser.id] || 0;
+    const multiplier = getStreakMultiplier(currentUser.id);
+
+    const now = new Date();
+    const dateStr = now.toLocaleDateString(currentLang === 'ru' ? 'ru-RU' : currentLang === 'tj' ? 'tg-TJ' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+    // Weekly challenge progress
+    const weekPts = calculatePoints(currentUser.id, 'week');
+    const challengeGoal = 200;
+    const challengePct = Math.min(100, Math.round((weekPts / challengeGoal) * 100));
+
+    container.innerHTML = `
+        <div class="date-header">
+            <h2>${t('todayProgress')}</h2>
+            <p>${dateStr}</p>
+        </div>
+
+        ${currentUser.role === 'child' ? `
+        <div class="challenge-banner">
+            <div class="challenge-icon">🏆</div>
+            <div class="challenge-info" style="flex:1">
+                <h4>${t('weeklyChallenge')}: ${challengeGoal} ${t('weeklyPts').toLowerCase()}</h4>
+                <p>${weekPts}/${challengeGoal} pts (${challengePct}%)</p>
+                <div class="challenge-progress"><div class="challenge-progress-fill" style="width:${challengePct}%"></div></div>
+            </div>
+        </div>` : ''}
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">✅</div>
+                <div class="stat-value">${done}/${myTasks.length}</div>
+                <div class="stat-label">${t('todayProgress')}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⭐</div>
+                <div class="stat-value">${todayPts}</div>
+                <div class="stat-label">${t('todayPts')}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🔥</div>
+                <div class="stat-value">${streak}</div>
+                <div class="stat-label">${t('streak')}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⚡</div>
+                <div class="stat-value">${multiplier.toFixed(1)}x</div>
+                <div class="stat-label">Multiplier</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="progress-bar-wrap">
+                <div class="progress-bar-fill" style="width:${pct}%"></div>
+            </div>
+            <div style="text-align:center;margin-top:8px;font-size:13px;font-weight:600;color:var(--primary)">${pct}% ${t('completionRate')}</div>
+        </div>
+
+        ${currentUser.role === 'child' ? `
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">${t('achievements')}</span>
+                <button class="icon-btn" onclick="openRewardStore()"><span class="material-icons-round" style="color:var(--warning)">redeem</span></button>
+            </div>
+            <div class="badges-grid">
+                ${achievements.map(a => {
+                    const earned = a.condition(getTotalPoints(currentUser.id), data, currentUser.id);
+                    const aName = currentLang === 'ru' ? a.nameRu : currentLang === 'tj' ? a.nameTj : a.name;
+                    return `<div class="badge ${earned ? 'earned' : 'locked'}"><div class="badge-icon">${a.icon}</div><div class="badge-name">${aName}</div></div>`;
+                }).join('')}
+            </div>
+        </div>` : ''}
+
+        <div class="category-tabs">
+            <button class="cat-tab active" onclick="filterTasks('all')">${t('allCategories')}</button>
+            <button class="cat-tab" onclick="filterTasks('routine')">${t('catRoutine')}</button>
+            <button class="cat-tab" onclick="filterTasks('islamic')">${t('catIslamic')}</button>
+            <button class="cat-tab" onclick="filterTasks('chore')">${t('catChore')}</button>
+            <button class="cat-tab" onclick="filterTasks('habit')">${t('catHabit')}</button>
+        </div>
+        <div class="task-list" id="taskList">
+            ${renderTaskList(myTasks, completions)}
+        </div>
+    `;
+}
+
+function renderTaskList(tasks, completions, filter = 'all') {
+    let filtered = filter === 'all' ? tasks : tasks.filter(t => t.category === filter);
+    filtered.sort((a, b) => (a.time || 'zz').localeCompare(b.time || 'zz'));
+    if (!filtered.length) return `<div class="empty-state"><span class="material-icons-round">check_circle</span><p>${t('noData')}</p></div>`;
+
+    return filtered.map(task => {
+        const key = `${currentUser.id}_${task.id}`;
+        const done = completions[key];
+        const pts = getTaskPoints(task);
+        const taskName = currentLang === 'ru' ? (task.nameRu || task.name) : currentLang === 'tj' ? (task.nameTj || task.name) : task.name;
+        const diffColors = { easy: '#10b981', medium: '#f59e0b', hard: '#ef4444', epic: '#8b5cf6' };
+
+        return `
+            <div class="task-card ${done ? 'completed' : ''}" onclick="toggleTask('${task.id}')">
+                <div class="task-check"></div>
+                <div class="task-content">
+                    <div class="task-title">${taskName}</div>
+                    <div class="task-meta">
+                        ${task.time ? `<span class="task-time"><span class="material-icons-round">schedule</span>${task.time}</span>` : ''}
+                        <span class="task-points">+${pts} pts</span>
+                        <span class="task-difficulty" style="color:${diffColors[task.difficulty]}">● ${t(task.difficulty)}</span>
+                    </div>
+                </div>
+            </div>`;
+    }).join('');
+}
+
+function filterTasks(category) {
+    document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    const data = getData();
+    const today = getTodayKey();
+    const myTasks = data.tasks.filter(t => t.assignedTo.includes(currentUser.id) && isTaskForToday(t));
+    document.getElementById('taskList').innerHTML = renderTaskList(myTasks, data.completions[today] || {}, category);
+}
+
+function toggleTask(taskId) {
+    const data = getData();
+    const today = getTodayKey();
+    if (!data.completions[today]) data.completions[today] = {};
+    const key = `${currentUser.id}_${taskId}`;
+    const wasCompleted = data.completions[today][key];
+    data.completions[today][key] = !wasCompleted;
+
+    if (!wasCompleted) {
+        const task = data.tasks.find(t => t.id === taskId);
+        if (task) {
+            const pts = getTaskPoints(task);
+            showPointsPopup(pts);
+            showToast(`+${pts} ${t('pointsEarned')} ${t('greatJob')}`);
+        }
+    }
+
+    // Update streak
+    const myTasks = data.tasks.filter(t => t.assignedTo.includes(currentUser.id) && isTaskForToday(t));
+    const allDone = myTasks.every(t => data.completions[today][`${currentUser.id}_${t.id}`]);
+    if (!data.streaks) data.streaks = {};
+
+    // Check yesterday to maintain streak
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+    const yKey = yesterday.toISOString().split('T')[0];
+    const yComp = data.completions[yKey] || {};
+    const yTasks = data.tasks.filter(t => t.assignedTo.includes(currentUser.id) && isTaskForDay(t, yesterday));
+    const yAllDone = yTasks.length > 0 && yTasks.every(t => yComp[`${currentUser.id}_${t.id}`]);
+
+    if (allDone && myTasks.length > 0) {
+        if (!data.streaks[currentUser.id] || data.streaks[currentUser.id] === 0) {
+            data.streaks[currentUser.id] = yAllDone ? 2 : 1;
+        }
+    }
+
+    saveData(data);
+    updateTopPoints();
+    renderCurrentTab();
+}
+
+// ==================== LEADERBOARD ====================
+function renderLeaderboard(container) {
+    const kids = familyMembers.filter(m => m.role === 'child');
+    const data = getData();
+
+    let boardPeriod = 'week';
+    const dailyScores = kids.map(k => ({ ...k, points: calculatePoints(k.id, 'today') })).sort((a,b) => b.points - a.points);
+    const weeklyScores = kids.map(k => ({ ...k, points: calculatePoints(k.id, 'week') })).sort((a,b) => b.points - a.points);
+    const monthlyScores = kids.map(k => ({ ...k, points: calculatePoints(k.id, 'month') })).sort((a,b) => b.points - a.points);
+
+    container.innerHTML = `
+        <div class="date-header">
+            <h2>🏆 ${t('leaderboard')}</h2>
+            <p>${t('weeklyChallenge')}</p>
+        </div>
+
+        <div class="category-tabs" style="margin-bottom:16px">
+            <button class="cat-tab" onclick="document.getElementById('lb-daily').classList.remove('hidden');document.getElementById('lb-weekly').classList.add('hidden');document.getElementById('lb-monthly').classList.add('hidden');this.parentElement.querySelectorAll('.cat-tab').forEach(t=>t.classList.remove('active'));this.classList.add('active')">${t('dailyBoard')}</button>
+            <button class="cat-tab active" onclick="document.getElementById('lb-weekly').classList.remove('hidden');document.getElementById('lb-daily').classList.add('hidden');document.getElementById('lb-monthly').classList.add('hidden');this.parentElement.querySelectorAll('.cat-tab').forEach(t=>t.classList.remove('active'));this.classList.add('active')">${t('weeklyBoard')}</button>
+            <button class="cat-tab" onclick="document.getElementById('lb-monthly').classList.remove('hidden');document.getElementById('lb-daily').classList.add('hidden');document.getElementById('lb-weekly').classList.add('hidden');this.parentElement.querySelectorAll('.cat-tab').forEach(t=>t.classList.remove('active'));this.classList.add('active')">${t('monthlyBoard')}</button>
+        </div>
+
+        <div id="lb-daily" class="hidden">${renderLeaderList(dailyScores)}</div>
+        <div id="lb-weekly">${renderLeaderList(weeklyScores)}</div>
+        <div id="lb-monthly" class="hidden">${renderLeaderList(monthlyScores)}</div>
+
+        <div class="card" style="margin-top:16px">
+            <div class="card-header"><span class="card-title">${t('achievements')}</span></div>
+            ${kids.map(k => {
+                const earned = achievements.filter(a => a.condition(getTotalPoints(k.id), data, k.id)).length;
+                return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bg)">
+                    <div class="avatar" style="background:${k.color};width:32px;height:32px;font-size:11px">${k.initials}</div>
+                    <span style="flex:1;font-weight:600;font-size:13px">${getMemberName(k)}</span>
+                    <span style="font-size:13px">${earned}/${achievements.length} 🏅</span>
+                </div>`;
+            }).join('')}
+        </div>
+    `;
+}
+
+function renderLeaderList(scores) {
+    return `<div class="leaderboard">${scores.map((s, i) => `
+        <div class="leader-item rank-${i+1}" style="animation:popIn ${0.3 + i*0.1}s ease">
+            <div class="leader-rank">${i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</div>
+            <div class="avatar" style="background:${s.color};width:36px;height:36px;font-size:12px">${s.initials}</div>
+            <div class="leader-info">
+                <div class="leader-name">${getMemberName(s)}</div>
+                <div class="leader-sub">🔥 ${getData().streaks[s.id] || 0} ${t('streak')}</div>
+            </div>
+            <div class="leader-points">${s.points} pts</div>
+        </div>
+    `).join('')}</div>`;
+}
+
+// ==================== MENU ====================
+function renderMenu(container) {
+    const data = getData();
+    const days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+    const todayName = new Date().toLocaleDateString('en-US', {weekday:'long'}).toLowerCase();
+
+    container.innerHTML = `
+        <div class="date-header"><h2>🍽 ${t('weeklyMenu')}</h2></div>
+        ${days.map(day => {
+            const menu = data.menus.find(m => m.day === day) || {};
+            const isToday = day === todayName;
+            return `<div class="menu-card" style="${isToday ? 'border:2px solid var(--primary);' : ''}">
+                <h4>${isToday ? '📍 ' : ''}${t(day)}</h4>
+                <div class="menu-item">☀️ <strong>${t('breakfast')}:</strong>&nbsp;${menu.breakfast || '—'}</div>
+                <div class="menu-item">🌤 <strong>${t('lunch')}:</strong>&nbsp;${menu.lunch || '—'}</div>
+                <div class="menu-item">🌙 <strong>${t('dinner')}:</strong>&nbsp;${menu.dinner || '—'}</div>
+            </div>`;
+        }).join('')}
+    `;
+}
+
+// ==================== REPORTS (with filters & export) ====================
+function renderReports(container) {
+    const data = getData();
+    const kids = familyMembers.filter(m => m.role === 'child');
+    const allMembers = familyMembers;
+
+    container.innerHTML = `
+        <div class="date-header"><h2>📊 ${t('reports')}</h2></div>
+
+        <div class="filters-bar">
+            <select class="filter-select" id="filterPeriod" onchange="updateReport()">
+                <option value="today">${t('todayPts')}</option>
+                <option value="week" selected>${t('thisWeek')}</option>
+                <option value="month">${t('thisMonth')}</option>
+                <option value="last7">${t('last7')}</option>
+                <option value="last30">${t('last30')}</option>
+            </select>
+            <select class="filter-select" id="filterMember" onchange="updateReport()">
+                <option value="all">${t('allMembers')}</option>
+                ${(currentUser.role === 'parent' ? allMembers : [currentUser]).map(m => `<option value="${m.id}">${getMemberName(m)}</option>`).join('')}
+            </select>
+            <select class="filter-select" id="filterCategory" onchange="updateReport()">
+                <option value="all">${t('allCategories')}</option>
+                <option value="routine">${t('catRoutine')}</option>
+                <option value="islamic">${t('catIslamic')}</option>
+                <option value="chore">${t('catChore')}</option>
+                <option value="habit">${t('catHabit')}</option>
+            </select>
+            ${currentUser.role === 'parent' ? `
+            <button class="export-btn export-xlsx" onclick="exportXLSX()"><span class="material-icons-round" style="font-size:16px">table_chart</span>${t('exportXlsx')}</button>
+            <button class="export-btn export-pdf" onclick="exportPDF()"><span class="material-icons-round" style="font-size:16px">picture_as_pdf</span>${t('exportPdf')}</button>
+            ` : ''}
+        </div>
+
+        <div id="reportContent"></div>
+    `;
+    updateReport();
+}
+
+function updateReport() {
+    const period = document.getElementById('filterPeriod').value;
+    const member = document.getElementById('filterMember').value;
+    const category = document.getElementById('filterCategory').value;
+    const data = getData();
+
+    const members = member === 'all' ? familyMembers : [familyMembers.find(m => m.id === member)];
+    const { startDate, endDate } = getDateRange(period);
+
+    // Calculate stats
+    let reportData = members.map(m => {
+        let totalTasks = 0, completedTasks = 0, points = 0;
+        let d = new Date(startDate);
+        while (d <= endDate) {
+            const key = d.toISOString().split('T')[0];
+            const dayComp = data.completions[key] || {};
+            const dayTasks = data.tasks.filter(t =>
+                t.assignedTo.includes(m.id) && isTaskForDay(t, d) &&
+                (category === 'all' || t.category === category)
+            );
+            totalTasks += dayTasks.length;
+            dayTasks.forEach(t => {
+                if (dayComp[`${m.id}_${t.id}`]) {
+                    completedTasks++;
+                    points += getTaskPoints(t);
+                }
+            });
+            d.setDate(d.getDate() + 1);
+        }
+        const rate = totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0;
+        return { ...m, totalTasks, completedTasks, points, rate };
+    });
+
+    reportData.sort((a, b) => b.points - a.points);
+
+    // Bar chart data (last 7 days for selected members)
+    const chartDays = [];
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        const key = d.toISOString().split('T')[0];
+        const dayComp = data.completions[key] || {};
+        let dayPts = 0;
+        members.forEach(m => {
+            data.tasks.filter(t => t.assignedTo.includes(m.id) && isTaskForDay(t, d) && (category === 'all' || t.category === category)).forEach(t => {
+                if (dayComp[`${m.id}_${t.id}`]) dayPts += getTaskPoints(t);
+            });
+        });
+        chartDays.push({ label: d.toLocaleDateString(currentLang === 'ru' ? 'ru-RU' : 'en', { weekday: 'short' }), value: dayPts });
+    }
+    const maxChart = Math.max(...chartDays.map(d => d.value), 1);
+
+    document.getElementById('reportContent').innerHTML = `
+        <div class="chart-container">
+            <div class="card-title" style="margin-bottom:12px">📈 ${t('weeklyPts')} (${t('last7')})</div>
+            <div class="bar-chart">
+                ${chartDays.map(d => `
+                    <div class="bar-item">
+                        <div class="bar-value">${d.value}</div>
+                        <div class="bar" style="height:${(d.value / maxChart) * 100}%"></div>
+                        <div class="bar-label">${d.label}</div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title" style="margin-bottom:12px">${t('completionRate')}</div>
+            ${reportData.map((r, i) => `
+                <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bg)">
+                    <div style="font-weight:800;font-size:14px;width:20px;color:${i===0?'var(--gold)':i===1?'var(--silver)':'var(--text-muted)'}">#${i+1}</div>
+                    <div class="avatar" style="background:${r.color};width:32px;height:32px;font-size:11px">${r.initials}</div>
+                    <div style="flex:1">
+                        <div style="font-weight:600;font-size:13px">${getMemberName(r)}</div>
+                        <div style="font-size:11px;color:var(--text-secondary)">${r.completedTasks}/${r.totalTasks} tasks · ${r.rate}%</div>
+                    </div>
+                    <div style="font-weight:800;font-size:15px;color:var(--primary)">${r.points} pts</div>
+                </div>
+            `).join('')}
+        </div>
+
+        ${currentUser.role === 'parent' ? `
+        <div class="card">
+            <div class="card-title" style="margin-bottom:8px">${t('topPerformer')}</div>
+            ${reportData.length ? `<div style="text-align:center;padding:12px">
+                <div style="font-size:48px;margin-bottom:8px">${reportData[0].points > 0 ? '👑' : '—'}</div>
+                <div style="font-weight:800;font-size:18px">${reportData[0].points > 0 ? getMemberName(reportData[0]) : t('noData')}</div>
+                <div style="color:var(--primary);font-weight:700">${reportData[0].points} pts</div>
+            </div>` : `<p>${t('noData')}</p>`}
+        </div>` : ''}
+    `;
+}
+
+// ==================== EXPORT XLSX ====================
+function exportXLSX() {
+    const data = getData();
+    const period = document.getElementById('filterPeriod').value;
+    const memberFilter = document.getElementById('filterMember').value;
+    const category = document.getElementById('filterCategory').value;
+    const { startDate, endDate } = getDateRange(period);
+    const members = memberFilter === 'all' ? familyMembers : [familyMembers.find(m => m.id === memberFilter)];
+
+    // Summary sheet
+    const summaryRows = [['Name', 'Role', 'Total Tasks', 'Completed', 'Rate %', 'Points', 'Streak']];
+    members.forEach(m => {
+        let total = 0, done = 0, pts = 0;
+        let d = new Date(startDate);
+        while (d <= endDate) {
+            const key = d.toISOString().split('T')[0];
+            const dayComp = data.completions[key] || {};
+            data.tasks.filter(t => t.assignedTo.includes(m.id) && isTaskForDay(t, d) && (category === 'all' || t.category === category)).forEach(t => {
+                total++;
+                if (dayComp[`${m.id}_${t.id}`]) { done++; pts += getTaskPoints(t); }
+            });
+            d.setDate(d.getDate() + 1);
+        }
+        summaryRows.push([m.nameFull || m.name, m.role, total, done, total ? Math.round((done/total)*100) : 0, pts, data.streaks[m.id] || 0]);
+    });
+
+    // Daily detail sheet
+    const detailRows = [['Date', 'Member', 'Task', 'Category', 'Difficulty', 'Points', 'Completed']];
+    let d = new Date(startDate);
+    while (d <= endDate) {
+        const key = d.toISOString().split('T')[0];
+        const dayComp = data.completions[key] || {};
+        members.forEach(m => {
+            data.tasks.filter(t => t.assignedTo.includes(m.id) && isTaskForDay(t, d) && (category === 'all' || t.category === category)).forEach(t => {
+                const done = dayComp[`${m.id}_${t.id}`] ? 'Yes' : 'No';
+                detailRows.push([key, m.name, t.name, t.category, t.difficulty, getTaskPoints(t), done]);
+            });
+        });
+        d.setDate(d.getDate() + 1);
+    }
+
+    const wb = XLSX.utils.book_new();
+    const ws1 = XLSX.utils.aoa_to_sheet(summaryRows);
+    const ws2 = XLSX.utils.aoa_to_sheet(detailRows);
+
+    // Style header widths
+    ws1['!cols'] = [{wch:25},{wch:8},{wch:12},{wch:10},{wch:8},{wch:8},{wch:8}];
+    ws2['!cols'] = [{wch:12},{wch:18},{wch:30},{wch:10},{wch:10},{wch:8},{wch:10}];
+
+    XLSX.utils.book_append_sheet(wb, ws1, 'Summary');
+    XLSX.utils.book_append_sheet(wb, ws2, 'Details');
+    XLSX.writeFile(wb, `Family_Report_${getTodayKey()}.xlsx`);
+    showToast('Excel file downloaded!');
+}
+
+// ==================== EXPORT PDF ====================
+function exportPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const data = getData();
+    const period = document.getElementById('filterPeriod').value;
+    const memberFilter = document.getElementById('filterMember').value;
+    const category = document.getElementById('filterCategory').value;
+    const { startDate, endDate } = getDateRange(period);
+    const members = memberFilter === 'all' ? familyMembers : [familyMembers.find(m => m.id === memberFilter)];
+
+    // Title
+    doc.setFontSize(20);
+    doc.setFont(undefined, 'bold');
+    doc.text('Family Manager Pro - Report', 14, 22);
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'normal');
+    doc.text(`${t('generatedOn')}: ${new Date().toLocaleDateString()}`, 14, 30);
+    doc.text(`Period: ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`, 14, 36);
+
+    // Summary table
+    const tableData = [];
+    members.forEach(m => {
+        let total = 0, done = 0, pts = 0;
+        let d = new Date(startDate);
+        while (d <= endDate) {
+            const key = d.toISOString().split('T')[0];
+            const dayComp = data.completions[key] || {};
+            data.tasks.filter(t => t.assignedTo.includes(m.id) && isTaskForDay(t, d) && (category === 'all' || t.category === category)).forEach(t => {
+                total++;
+                if (dayComp[`${m.id}_${t.id}`]) { done++; pts += getTaskPoints(t); }
+            });
+            d.setDate(d.getDate() + 1);
+        }
+        tableData.push([m.nameFull || m.name, t(m.role), total, done, `${total ? Math.round((done/total)*100) : 0}%`, pts, data.streaks[m.id] || 0]);
+    });
+
+    doc.autoTable({
+        startY: 44,
+        head: [['Name', 'Role', 'Total Tasks', 'Completed', 'Rate', 'Points', 'Streak']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [79, 70, 229] },
+        styles: { fontSize: 10 }
+    });
+
+    // Kids leaderboard section
+    const kids = members.filter(m => m.role === 'child');
+    if (kids.length > 0) {
+        const finalY = doc.lastAutoTable.finalY + 14;
+        doc.setFontSize(14);
+        doc.setFont(undefined, 'bold');
+        doc.text('Kids Leaderboard', 14, finalY);
+
+        const kidData = kids.map(k => {
+            let pts = 0;
+            let d = new Date(startDate);
+            while (d <= endDate) {
+                const key = d.toISOString().split('T')[0];
+                const dayComp = data.completions[key] || {};
+                data.tasks.filter(t => t.assignedTo.includes(k.id) && isTaskForDay(t, d)).forEach(t => {
+                    if (dayComp[`${k.id}_${t.id}`]) pts += getTaskPoints(t);
+                });
+                d.setDate(d.getDate() + 1);
+            }
+            return [k.name, pts, data.streaks[k.id] || 0];
+        }).sort((a,b) => b[1] - a[1]);
+
+        doc.autoTable({
+            startY: finalY + 4,
+            head: [['Rank', 'Name', 'Points', 'Streak']],
+            body: kidData.map((k, i) => [`#${i+1} ${i===0?'🥇':i===1?'🥈':'🥉'}`, k[0], k[1], `${k[2]} days`]),
+            theme: 'striped',
+            headStyles: { fillColor: [139, 92, 246] }
+        });
+    }
+
+    doc.save(`Family_Report_${getTodayKey()}.pdf`);
+    showToast('PDF file downloaded!');
+}
+
+// ==================== MANAGE (Parents) ====================
+function renderManage(container) {
+    if (currentUser.role !== 'parent') return;
+    const data = getData();
+    const categories = ['routine', 'islamic', 'chore', 'habit', 'duty', 'program'];
+
+    container.innerHTML = `
+        <div class="date-header"><h2>⚙️ ${t('manage')}</h2></div>
+
+        ${currentUser.role === 'parent' ? `
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">${t('familyReport')}</span>
+            </div>
+            ${familyMembers.map(m => {
+                const todayPts = calculatePoints(m.id, 'today');
+                const weekPts = calculatePoints(m.id, 'week');
+                return `<div class="family-card" style="margin:0;padding:10px 0;box-shadow:none;border-bottom:1px solid var(--bg)">
+                    <div class="avatar" style="background:${m.color};width:36px;height:36px;font-size:12px">${m.initials}</div>
+                    <div class="fm-info">
+                        <div class="fm-name">${getMemberName(m)}</div>
+                        <div class="fm-stats">${t('todayPts')}: ${todayPts} · ${t('weeklyPts')}: ${weekPts} · 🔥${data.streaks[m.id]||0}</div>
+                    </div>
+                </div>`;
+            }).join('')}
+        </div>` : ''}
+
+        ${categories.map(cat => {
+            const catTasks = data.tasks.filter(t => t.category === cat);
+            if (!catTasks.length) return '';
+            return `<div class="card">
+                <div class="card-header"><span class="card-title">${t('cat' + cat.charAt(0).toUpperCase() + cat.slice(1))} (${catTasks.length})</span></div>
+                ${catTasks.map(task => {
+                    const taskName = currentLang === 'ru' ? (task.nameRu || task.name) : currentLang === 'tj' ? (task.nameTj || task.name) : task.name;
+                    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bg)">
+                        <div style="flex:1;font-size:13px;font-weight:500">${taskName}</div>
+                        <span style="font-size:11px;color:var(--text-muted)">${getTaskPoints(task)}pts · ${t(task.difficulty)}</span>
+                        <button class="icon-btn" onclick="editTask('${task.id}')"><span class="material-icons-round" style="font-size:18px">edit</span></button>
+                        <button class="icon-btn" onclick="deleteTask('${task.id}')"><span class="material-icons-round" style="font-size:18px;color:var(--danger)">delete</span></button>
+                    </div>`;
+                }).join('')}
+            </div>`;
+        }).join('')}
+    `;
+}
+
+// ==================== MODALS ====================
+function openAddModal() {
+    if (currentUser.role !== 'parent') return;
+    editingTaskId = null;
+    document.getElementById('modalTitle').textContent = t('addTask');
+    document.getElementById('taskForm').reset();
+    document.getElementById('deleteTaskBtn').classList.add('hidden');
+    renderAssignChips();
+    if (currentTab === 'menu') {
+        document.getElementById('menuModalOverlay').classList.add('active');
+    } else {
+        document.getElementById('modalOverlay').classList.add('active');
+    }
+}
+
+function renderAssignChips() {
+    document.getElementById('assignChips').innerHTML = familyMembers.map(m =>
+        `<div class="chip selected" onclick="this.classList.toggle('selected')" data-id="${m.id}">${getMemberName(m)}</div>`
+    ).join('');
+}
+
+function closeModal(e) { if (!e || e.target === e.currentTarget) document.getElementById('modalOverlay').classList.remove('active'); }
+function closeMenuModal(e) { if (!e || e.target === e.currentTarget) document.getElementById('menuModalOverlay').classList.remove('active'); }
+function closeRewardModal(e) { if (!e || e.target === e.currentTarget) document.getElementById('rewardModalOverlay').classList.remove('active'); }
+function closeLangModal(e) { if (!e || e.target === e.currentTarget) document.getElementById('langModalOverlay').classList.remove('active'); }
+function showLangMenu() { document.getElementById('langModalOverlay').classList.add('active'); }
+
+function saveTask(e) {
+    e.preventDefault();
+    const data = getData();
+    const assignedTo = Array.from(document.querySelectorAll('#assignChips .chip.selected')).map(c => c.dataset.id);
+    if (!assignedTo.length) { alert('Assign to at least one person'); return; }
+
+    const task = {
+        id: editingTaskId || 'task_' + Date.now(),
+        name: document.getElementById('taskNameInput').value,
+        nameRu: document.getElementById('taskNameRu').value || document.getElementById('taskNameInput').value,
+        nameTj: document.getElementById('taskNameTj').value || document.getElementById('taskNameInput').value,
+        category: document.getElementById('taskCategory').value,
+        difficulty: document.getElementById('taskDifficulty').value,
+        time: document.getElementById('taskTime').value,
+        assignedTo, repeat: document.getElementById('taskRepeat').value,
+        notes: document.getElementById('taskNotes').value
+    };
+
+    if (editingTaskId) {
+        const idx = data.tasks.findIndex(t => t.id === editingTaskId);
+        if (idx !== -1) data.tasks[idx] = task;
+    } else { data.tasks.push(task); }
+
+    saveData(data);
+    closeModal();
+    renderCurrentTab();
+}
+
+function editTask(taskId) {
+    if (currentUser.role !== 'parent') return;
+    const data = getData();
+    const task = data.tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    editingTaskId = taskId;
+    document.getElementById('modalTitle').textContent = t('editTask');
+    document.getElementById('taskNameInput').value = task.name;
+    document.getElementById('taskNameRu').value = task.nameRu || '';
+    document.getElementById('taskNameTj').value = task.nameTj || '';
+    document.getElementById('taskCategory').value = task.category;
+    document.getElementById('taskDifficulty').value = task.difficulty || 'easy';
+    document.getElementById('taskTime').value = task.time || '';
+    document.getElementById('taskRepeat').value = task.repeat;
+    document.getElementById('taskNotes').value = task.notes || '';
+    document.getElementById('deleteTaskBtn').classList.remove('hidden');
+
+    renderAssignChips();
+    document.querySelectorAll('#assignChips .chip').forEach(chip => {
+        if (!task.assignedTo.includes(chip.dataset.id)) chip.classList.remove('selected');
+    });
+    document.getElementById('modalOverlay').classList.add('active');
+}
+
+function deleteTask(taskId) {
+    if (currentUser.role !== 'parent') return;
+    const data = getData();
+    data.tasks = data.tasks.filter(t => t.id !== taskId);
+    saveData(data);
+    renderCurrentTab();
+}
+
+function deleteCurrentTask() {
+    if (editingTaskId) { deleteTask(editingTaskId); closeModal(); }
+}
+
+function saveMenu(e) {
+    e.preventDefault();
+    const data = getData();
+    const day = document.getElementById('menuDay').value;
+    const meal = document.getElementById('mealType').value;
+    const dish = document.getElementById('menuDishInput').value;
+    let menuItem = data.menus.find(m => m.day === day);
+    if (!menuItem) { menuItem = { day, breakfast: '', lunch: '', dinner: '' }; data.menus.push(menuItem); }
+    menuItem[meal] = dish;
+    saveData(data);
+    closeMenuModal();
+    renderCurrentTab();
+}
+
+// REWARD STORE
+function openRewardStore() {
+    const total = getTotalPoints(currentUser.id);
+    const data = getData();
+    const redeemed = data.redeemed[currentUser.id] || 0;
+    const available = total - redeemed;
+
+    document.getElementById('rewardList').innerHTML = `
+        <div style="text-align:center;margin-bottom:16px">
+            <div style="font-size:24px;font-weight:800;color:var(--primary)">${available} pts available</div>
+        </div>
+        ${rewards.map(r => {
+            const canAfford = available >= r.cost;
+            const rName = currentLang === 'ru' ? r.nameRu : currentLang === 'tj' ? r.nameTj : r.name;
+            return `<div class="reward-card">
+                <div class="reward-icon">${r.icon}</div>
+                <div class="reward-info">
+                    <div class="reward-name">${rName}</div>
+                    <div class="reward-cost">⭐ ${r.cost} pts</div>
+                </div>
+                <button class="reward-btn" ${canAfford ? `onclick="redeemReward('${r.id}', ${r.cost})"` : 'disabled'}>${canAfford ? '✓' : '🔒'}</button>
+            </div>`;
+        }).join('')}
+    `;
+    document.getElementById('rewardModalOverlay').classList.add('active');
+}
+
+function redeemReward(rewardId, cost) {
+    const data = getData();
+    if (!data.redeemed) data.redeemed = {};
+    if (!data.redeemed[currentUser.id]) data.redeemed[currentUser.id] = 0;
+    data.redeemed[currentUser.id] += cost;
+    saveData(data);
+    showToast('🎉 Reward redeemed! Show this to your parents.');
+    closeRewardModal();
+    updateTopPoints();
+}
+
+// ==================== UTILITIES ====================
+function getTodayKey() { return new Date().toISOString().split('T')[0]; }
+function isTaskForToday(task) { return isTaskForDay(task, new Date()); }
+function isTaskForDay(task, date) {
+    const day = date.getDay();
+    if (task.repeat === 'daily') return true;
+    if (task.repeat === 'weekdays') return day >= 1 && day <= 5;
+    if (task.repeat === 'weekends') return day === 0 || day === 6;
+    return true;
+}
+
+function getDateRange(period) {
+    const now = new Date();
+    let startDate, endDate = new Date(now.toISOString().split('T')[0]);
+    if (period === 'today') { startDate = new Date(endDate); }
+    else if (period === 'week') { startDate = new Date(endDate); startDate.setDate(endDate.getDate() - endDate.getDay()); }
+    else if (period === 'month') { startDate = new Date(endDate.getFullYear(), endDate.getMonth(), 1); }
+    else if (period === 'last7') { startDate = new Date(endDate); startDate.setDate(endDate.getDate() - 7); }
+    else if (period === 'last30') { startDate = new Date(endDate); startDate.setDate(endDate.getDate() - 30); }
+    else { startDate = new Date(0); }
+    return { startDate, endDate };
+}
+
+function toggleTheme() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    document.documentElement.setAttribute('data-theme', isDark ? '' : 'dark');
+    document.getElementById('themeIcon').textContent = isDark ? 'dark_mode' : 'light_mode';
+    localStorage.setItem('fm_theme', isDark ? '' : 'dark');
+}
+
+function showToast(msg) {
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+function showPointsPopup(pts) {
+    const el = document.createElement('div');
+    el.className = 'points-popup';
+    el.textContent = `+${pts} ⭐`;
+    el.style.left = Math.random() * 60 + 20 + '%';
+    el.style.top = '50%';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1500);
+}
+
+// ==================== INIT ====================
+function init() {
+    if (!localStorage.getItem('fm_data_v2')) {
+        saveData({ tasks: getDefaultTasks(), completions: {}, menus: getDefaultMenus(), streaks: {}, points: {}, redeemed: {} });
+    }
+    const theme = localStorage.getItem('fm_theme');
+    if (theme) document.documentElement.setAttribute('data-theme', theme);
+
+    renderMemberList();
+
+    const savedUser = localStorage.getItem('fm_currentUser');
+    if (savedUser) {
+        currentUser = familyMembers.find(m => m.id === savedUser);
+        if (currentUser) { enterApp(); return; }
+    }
+}
+
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
+init();
+</script>
+</body>
+</html>
